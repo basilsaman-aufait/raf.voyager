@@ -998,12 +998,51 @@
       }
 
       const loadingManager = new THREE.LoadingManager();
-      loadingManager.onProgress = (url, itemsLoaded, itemsTotal) => {
-        targetPercent = Math.min(95, Math.round((itemsLoaded / itemsTotal) * 95));
-      };
-      loadingManager.onLoad = () => {
-        dismissLoader();
-      };
+      let totalAssetsNeeded = 2;
+      let assetsLoadedCount = 0;
+
+      function onAssetLoaded() {
+        assetsLoadedCount++;
+        targetPercent = Math.min(95, Math.round((assetsLoadedCount / totalAssetsNeeded) * 95));
+        if (assetsLoadedCount >= totalAssetsNeeded) {
+          dismissLoader();
+        }
+      }
+
+      // Safety timeout: dismiss loader after 5s so page never gets stuck on black screen
+      setTimeout(() => {
+        if (targetPercent < 100) {
+          dismissLoader();
+        }
+      }, 5000);
+
+      /* ================================================================
+         FALLBACK ASSET LOADER HELPER
+         Tries local candidate paths in sequence until one resolves
+      ================================================================ */
+      function loadWithFallbacks(loader, paths, onSuccess, onError) {
+        let idx = 0;
+        function tryNext() {
+          if (idx >= paths.length) {
+            if (onError) onError(new Error('All candidate paths failed'));
+            return;
+          }
+          const p = paths[idx++];
+          loader.load(
+            p,
+            (res) => {
+              console.log('[AssetLoader] Successfully loaded:', p);
+              onSuccess(res);
+            },
+            undefined,
+            (err) => {
+              console.warn('[AssetLoader] Failed to load candidate:', p, 'Trying next...');
+              tryNext();
+            }
+          );
+        }
+        tryNext();
+      }
 
       /* ================================================================
          RENDERER
@@ -1062,8 +1101,17 @@
       let skyMesh = null;
       const currentSky = { z: 0, rotY: 0 };
 
-      const textureLoader = new THREE.TextureLoader(loadingManager);
-      textureLoader.load('public/panorama-360-sky-view-img.jpg', (panoramaTexture) => {
+      const textureLoader = new THREE.TextureLoader();
+      const skyCandidates = [
+        './panorama-360-sky-view-img.jpg',
+        'panorama-360-sky-view-img.jpg',
+        './public/panorama-360-sky-view-img.jpg',
+        'public/panorama-360-sky-view-img.jpg',
+        '/panorama-360-sky-view-img.jpg',
+        '/public/panorama-360-sky-view-img.jpg'
+      ];
+
+      loadWithFallbacks(textureLoader, skyCandidates, (panoramaTexture) => {
         panoramaTexture.colorSpace = THREE.SRGBColorSpace;
 
         const envMap = pmremGenerator.fromEquirectangular(panoramaTexture).texture;
@@ -1084,6 +1132,10 @@
         skyMesh = new THREE.Mesh(skyGeo, skyMat);
         skyMesh.renderOrder = -100;
         scene.add(skyMesh);
+        onAssetLoaded();
+      }, (err) => {
+        console.error('Sky panorama could not be loaded from any candidate path:', err);
+        onAssetLoaded(); // advance progress even on failure
       });
 
       /* ================================================================
@@ -1107,14 +1159,23 @@
       const dracoLoader = new DRACOLoader();
       dracoLoader.setDecoderPath('https://cdn.jsdelivr.net/npm/three@0.164.1/examples/jsm/libs/draco/');
 
-      const gltfLoader = new GLTFLoader(loadingManager);
+      const gltfLoader = new GLTFLoader();
       gltfLoader.setDRACOLoader(dracoLoader);
 
       let model = null;
       const modelGroup = new THREE.Group();
       scene.add(modelGroup);
 
-      gltfLoader.load('public/raf_voyager_original_backup.glb', (gltf) => {
+      const modelCandidates = [
+        './raf_voyager_original_backup.glb',
+        'raf_voyager_original_backup.glb',
+        './public/raf_voyager_original_backup.glb',
+        'public/raf_voyager_original_backup.glb',
+        '/raf_voyager_original_backup.glb',
+        '/public/raf_voyager_original_backup.glb'
+      ];
+
+      loadWithFallbacks(gltfLoader, modelCandidates, (gltf) => {
         model = gltf.scene;
 
         // ── Auto-center and increase scale for prominent, heroic aircraft view ──
@@ -1151,10 +1212,10 @@
         });
 
         modelGroup.add(model);
-      },
-      undefined,
-      (error) => {
-        console.error('Error loading model:', error);
+        onAssetLoaded();
+      }, (error) => {
+        console.error('Error loading model from all candidate paths:', error);
+        onAssetLoaded(); // advance progress even on failure
       });
 
       /* ================================================================
