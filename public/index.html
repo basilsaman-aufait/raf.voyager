@@ -1063,7 +1063,7 @@
       const currentSky = { z: 0, rotY: 0 };
 
       const textureLoader = new THREE.TextureLoader(loadingManager);
-      textureLoader.load('public/panorama-360-sky-view-img.jpg', (panoramaTexture) => {
+      textureLoader.load('/panorama-360-sky-view-img.jpg', (panoramaTexture) => {
         panoramaTexture.colorSpace = THREE.SRGBColorSpace;
 
         const envMap = pmremGenerator.fromEquirectangular(panoramaTexture).texture;
@@ -1114,7 +1114,7 @@
       const modelGroup = new THREE.Group();
       scene.add(modelGroup);
 
-      gltfLoader.load('public/raf_voyager_original_backup.glb', (gltf) => {
+      gltfLoader.load('/raf_voyager_original_backup.glb', (gltf) => {
         model = gltf.scene;
 
         // ── Auto-center and increase scale for prominent, heroic aircraft view ──
