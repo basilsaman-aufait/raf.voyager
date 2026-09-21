@@ -1,0 +1,1522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="RAF Voyager — Precision-engineered aerospace excellence. Explore the aircraft in an immersive 3D cinematic scroll experience.">
+  <meta name="theme-color" content="#000000">
+  <title>RAF Voyager — Precision Engineered Aviation</title>
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            display: ['"Playfair Display"', 'Georgia', 'serif'],
+            body: ['"Inter"', 'system-ui', 'sans-serif'],
+          },
+          colors: {
+            jet: {
+              black: '#000000',
+              dark: '#060a10',
+              steel: '#1a2332',
+              silver: '#8a98ad',
+              ice: '#c4d4e8',
+              blue: '#2997ff',
+              cyan: '#00d4ff',
+              glow: '#4dc9f6',
+            },
+          },
+        },
+      },
+    };
+  </script>
+
+  <!-- Google Fonts — Playfair Display + Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400;1,500;1,600&display=swap" rel="stylesheet">
+
+  <!-- GSAP + ScrollTrigger -->
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"></script>
+
+  <!-- Lenis Smooth Scroll -->
+  <script src="https://cdn.jsdelivr.net/npm/lenis@1.1.13/dist/lenis.min.js"></script>
+
+  <!-- Three.js Import Map -->
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.164.1/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.164.1/examples/jsm/"
+    }
+  }
+  </script>
+
+  <style>
+    /* =====================================================
+       RESET & BASE
+    ===================================================== */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html {
+      scrollbar-width: none; /* Firefox — hide scrollbar for immersive feel */
+    }
+    html::-webkit-scrollbar { display: none; } /* Chrome/Safari */
+    html.lenis, html.lenis body { height: auto; }
+    .lenis.lenis-smooth { scroll-behavior: auto !important; }
+
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: #000;
+      color: #fff;
+      overflow-x: hidden;
+    }
+
+    /* =====================================================
+       VIRTUAL SCROLL SPACER — invisible, creates scroll distance
+       The visual viewport is 100vh/100vw fixed; this drives progress
+    ===================================================== */
+    #scroll-spacer {
+      height: 600vh;
+      position: relative;
+      pointer-events: none;
+    }
+
+    /* =====================================================
+       FIXED VIEWPORT — everything visual is locked here
+    ===================================================== */
+    #viewport {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      z-index: 1;
+      background: #050811;
+    }
+
+    /* =====================================================
+       3D CANVAS — fills entire fixed viewport
+    ===================================================== */
+    #canvas-container {
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+      will-change: clip-path;
+    }
+    #canvas-container canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    /* =====================================================
+       UI OVERLAY — fixed above canvas, pointer-events: none
+    ===================================================== */
+    #ui-overlay {
+      position: absolute;
+      inset: 0;
+      z-index: 10;
+      pointer-events: none;
+    }
+
+    /* =====================================================
+       HEADER — fixed top bar: logo | tagline | CTA
+    ===================================================== */
+    #site-header {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 50;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1.25rem 2.5rem;
+      pointer-events: auto;
+    }
+    #site-header .logo {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      font-family: 'Inter', sans-serif;
+      font-weight: 600;
+      font-size: 1rem;
+      letter-spacing: 0.02em;
+      color: rgba(255,255,255,0.9);
+    }
+    #site-header .logo svg {
+      width: 28px;
+      height: 28px;
+    }
+    #site-header .tagline {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-style: italic;
+      font-size: 0.85rem;
+      color: rgba(255,255,255,0.6);
+      letter-spacing: 0.02em;
+    }
+    .header-cta {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.6rem 1.5rem;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.75rem;
+      font-weight: 500;
+      letter-spacing: 0.08em;
+      color: #fff;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 100px;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+    .header-cta:hover {
+      background: rgba(255,255,255,0.15);
+      border-color: rgba(255,255,255,0.3);
+    }
+    .header-cta .arrow-circle {
+      width: 24px;
+      height: 24px;
+      background: #fff;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .header-cta .arrow-circle svg {
+      width: 12px;
+      height: 12px;
+      stroke: #000;
+    }
+
+    /* =====================================================
+       DIAMOND NAV DOTS — left side, vertical, EverSwap-style
+    ===================================================== */
+    #nav-diamonds {
+      position: absolute;
+      left: 2rem;
+      top: 50%;
+      transform: translateY(-50%);
+      z-index: 50;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+      align-items: center;
+      pointer-events: auto;
+    }
+    .nav-diamond {
+      width: 14px;
+      height: 14px;
+      transform: rotate(45deg);
+      border: 1.5px solid rgba(255,255,255,0.25);
+      background: transparent;
+      cursor: pointer;
+      transition: all 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+      padding: 0;
+      position: relative;
+    }
+    .nav-diamond::after {
+      content: '';
+      position: absolute;
+      inset: 2px;
+      background: transparent;
+      transition: background 0.4s ease;
+    }
+    .nav-diamond.active {
+      border-color: rgba(255,255,255,0.8);
+    }
+    .nav-diamond.active::after {
+      background: rgba(255,255,255,0.85);
+    }
+    .nav-diamond:hover {
+      border-color: rgba(255,255,255,0.5);
+    }
+
+    /* =====================================================
+       CHAPTER PANELS — Aeroplane Part Explanations
+       Positioned on left/right to ensure text NEVER overlaps 3D model
+       NO white shade — clean typography with crisp drop-shadows
+    ===================================================== */
+    .chapter {
+      position: absolute;
+      top: clamp(3.6rem, 7.5vh, 5.2rem);
+      width: min(390px, 32vw);
+      min-width: 260px;
+      opacity: 0;
+      pointer-events: none;
+      z-index: 25;
+      will-change: opacity, transform;
+    }
+    .chapter.left {
+      left: clamp(4.5rem, 8vw, 7.5rem);
+      text-align: left;
+    }
+    .chapter.right {
+      right: clamp(2.5rem, 6vw, 6rem);
+      text-align: left;
+    }
+    .chapter.top-left {
+      top: clamp(3.6rem, 7.5vh, 5.2rem);
+      left: clamp(4.5rem, 8vw, 7.5rem);
+    }
+
+    .ch-index {
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+      margin-bottom: 0.85rem;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.72rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.85);
+      text-shadow: 0 1px 10px rgba(0, 0, 0, 0.95), 0 2px 20px rgba(0, 0, 0, 0.85);
+    }
+    .ch-index b {
+      font-weight: 600;
+      color: #fff;
+    }
+    .ch-index i {
+      display: block;
+      width: 32px;
+      height: 1px;
+      background: rgba(255, 255, 255, 0.4);
+    }
+
+    .ch-title {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-weight: 400;
+      font-size: clamp(1.6rem, 2.4vw, 2.35rem);
+      line-height: 1.1;
+      letter-spacing: -0.015em;
+      color: #fff;
+      margin-bottom: 0.75rem;
+      text-shadow: 0 2px 14px rgba(0, 0, 0, 0.95), 0 4px 28px rgba(0, 0, 0, 0.85), 0 0 35px rgba(0, 0, 0, 0.7);
+    }
+    .ch-copy {
+      font-family: 'Inter', sans-serif;
+      font-size: clamp(0.78rem, 0.88vw, 0.88rem);
+      line-height: 1.65;
+      font-weight: 300;
+      color: rgba(255, 255, 255, 0.82);
+      max-width: 35ch;
+      margin-bottom: 1.15rem;
+      text-shadow: 0 1px 10px rgba(0, 0, 0, 0.95), 0 2px 20px rgba(0, 0, 0, 0.85);
+    }
+    .ch-stats {
+      display: flex;
+      gap: 1.8rem;
+      padding-top: 0.85rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.22);
+    }
+    .ch-stat b {
+      display: block;
+      font-family: 'Playfair Display', Georgia, serif;
+      font-weight: 500;
+      font-size: clamp(1.2rem, 1.8vw, 1.45rem);
+      line-height: 1.1;
+      color: #fff;
+      text-shadow: 0 2px 14px rgba(0, 0, 0, 0.95), 0 4px 24px rgba(0, 0, 0, 0.85);
+    }
+    .ch-stat span {
+      display: block;
+      margin-top: 0.25rem;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.66rem;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.6);
+      text-shadow: 0 1px 8px rgba(0, 0, 0, 0.95);
+    }
+
+    /* =====================================================
+       TEXT SECTIONS — centered in-place crossfade overlays
+       Each section is absolutely positioned, centered in viewport
+    ===================================================== */
+    .beat-text {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+      opacity: 0;
+      pointer-events: none;
+      width: 90%;
+      max-width: 900px;
+      will-change: opacity, transform;
+    }
+    .beat-label {
+      font-family: 'Inter', sans-serif;
+      font-size: 0.65rem;
+      font-weight: 500;
+      letter-spacing: 0.35em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.4);
+      margin-bottom: 1.25rem;
+    }
+    .beat-headline {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: clamp(3rem, 8vw, 7rem);
+      font-weight: 400;
+      line-height: 1.0;
+      letter-spacing: -0.01em;
+      color: rgba(255,255,255,0.95);
+      margin-bottom: 1.5rem;
+    }
+    .beat-headline em {
+      font-style: italic;
+    }
+    .beat-sub {
+      font-family: 'Inter', sans-serif;
+      font-size: clamp(0.85rem, 1.3vw, 1.05rem);
+      font-weight: 300;
+      line-height: 1.7;
+      color: rgba(255,255,255,0.45);
+      max-width: 480px;
+      margin: 0 auto;
+    }
+    .beat-divider {
+      width: 1px;
+      height: 60px;
+      background: linear-gradient(180deg, transparent, rgba(255,255,255,0.3), transparent);
+      margin: 0 auto 1.5rem;
+    }
+
+    /* =====================================================
+       "SCROLL TO START" PROMPT
+    ===================================================== */
+    #scroll-prompt {
+      position: absolute;
+      bottom: 3rem;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 30;
+      text-align: center;
+      pointer-events: none;
+      transition: opacity 0.6s ease;
+    }
+    #scroll-prompt .prompt-text {
+      font-family: 'Inter', sans-serif;
+      font-size: 0.7rem;
+      letter-spacing: 0.25em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.35);
+      margin-bottom: 0.75rem;
+    }
+    #scroll-prompt .prompt-line {
+      width: 1px;
+      height: 40px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.3), transparent);
+      margin: 0 auto;
+      animation: scrollPulse 2s ease-in-out infinite;
+    }
+    @keyframes scrollPulse {
+      0%, 100% { opacity: 0.3; transform: scaleY(0.7); }
+      50% { opacity: 1; transform: scaleY(1); }
+    }
+
+    /* =====================================================
+       CTA BUTTONS — final beat
+    ===================================================== */
+    .cta-primary {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.6rem;
+      padding: 0.9rem 2.2rem;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #000;
+      background: rgba(255,255,255,0.9);
+      border: none;
+      border-radius: 100px;
+      cursor: pointer;
+      transition: all 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+      text-decoration: none;
+      pointer-events: auto;
+    }
+    .cta-primary:hover {
+      background: #fff;
+      transform: translateY(-2px);
+      box-shadow: 0 8px 30px rgba(255,255,255,0.15);
+    }
+    .cta-primary svg {
+      width: 14px;
+      height: 14px;
+    }
+    .cta-secondary {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.9rem 2rem;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.75rem;
+      font-weight: 500;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.8);
+      background: transparent;
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 100px;
+      cursor: pointer;
+      transition: all 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+      text-decoration: none;
+      pointer-events: auto;
+    }
+    .cta-secondary:hover {
+      border-color: rgba(255,255,255,0.5);
+      color: #fff;
+      background: rgba(255,255,255,0.05);
+    }
+    /* =====================================================
+       EVERSWAP STYLE PILL CTAS & FINALE ARCHITECTURE
+    ===================================================== */
+    .everswap-pill-cta {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.85rem;
+      padding: 0.72rem 1.1rem 0.72rem 1.75rem;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.84rem;
+      font-weight: 500;
+      letter-spacing: 0.03em;
+      color: #0e1e12;
+      background: #dcf5a6;
+      border: none;
+      border-radius: 100px;
+      cursor: pointer;
+      text-decoration: none;
+      pointer-events: auto;
+      transition: all 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+    }
+    .everswap-pill-cta:hover {
+      background: #e8ffb8;
+      transform: translateY(-2px);
+      box-shadow: 0 10px 32px rgba(220, 245, 166, 0.32);
+    }
+    .everswap-pill-cta .pill-arrow-circle {
+      width: 28px;
+      height: 28px;
+      background: #0e1e12;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.3s ease;
+    }
+    .everswap-pill-cta:hover .pill-arrow-circle {
+      transform: scale(1.08) translate(1px, -1px);
+    }
+    .everswap-pill-cta .pill-arrow-circle svg {
+      width: 13px;
+      height: 13px;
+      stroke: #dcf5a6;
+    }
+
+    .everswap-pill-simple {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0.82rem 2.2rem;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.84rem;
+      font-weight: 500;
+      letter-spacing: 0.03em;
+      color: #0e1e12;
+      background: #dcf5a6;
+      border: none;
+      border-radius: 100px;
+      cursor: pointer;
+      text-decoration: none;
+      pointer-events: auto;
+      transition: all 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+    }
+    .everswap-pill-simple:hover {
+      background: #e8ffb8;
+      transform: translateY(-2px);
+      box-shadow: 0 10px 32px rgba(220, 245, 166, 0.32);
+    }
+
+    /* Architectural Diamond Frame Overlay */
+    #diamond-frame {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      z-index: 15;
+      opacity: 0;
+      will-change: width, height, top, opacity;
+    }
+    .diamond-box-border {
+      position: absolute;
+      inset: 0;
+      transform: rotate(45deg);
+      border: 1px solid rgba(255, 255, 255, 0.35);
+      box-shadow: 0 0 40px rgba(0, 0, 0, 0.65);
+    }
+    .diamond-corner-crosshair {
+      position: absolute;
+      inset: -28px;
+      pointer-events: none;
+    }
+    .diamond-corner-crosshair::before,
+    .diamond-corner-crosshair::after {
+      content: '';
+      position: absolute;
+      background: rgba(255, 255, 255, 0.2);
+    }
+    .diamond-corner-crosshair::before {
+      top: 50%;
+      left: 0;
+      right: 0;
+      height: 1px;
+    }
+    .diamond-corner-crosshair::after {
+      left: 50%;
+      top: 0;
+      bottom: 0;
+      width: 1px;
+    }
+
+    /* Single Word Inside the Diamond Jewel */
+    #diamond-word {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: clamp(0.92rem, 1.4vw, 1.3rem);
+      font-weight: 500;
+      letter-spacing: 0.28em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.95);
+      white-space: nowrap;
+      pointer-events: none;
+      opacity: 0;
+      text-shadow: 0 2px 14px rgba(0, 0, 0, 0.9);
+      z-index: 5;
+    }
+
+    /* =====================================================
+       HOTSPOTS — 3D-anchored callouts pointing to aircraft parts
+    ===================================================== */
+    #hotspots {
+      position: absolute;
+      inset: 0;
+      z-index: 20;
+      pointer-events: none;
+    }
+    .hotspot {
+      position: absolute;
+      left: 0;
+      top: 0;
+      opacity: 0;
+      transition: opacity 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+      will-change: transform, opacity;
+      pointer-events: none;
+    }
+    .hotspot.on {
+      opacity: 1;
+    }
+    .hs-dot {
+      position: absolute;
+      width: 9px;
+      height: 9px;
+      margin: -4.5px 0 0 -4.5px;
+      border-radius: 50%;
+      background: #fff;
+      box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.25), 0 0 16px rgba(255, 255, 255, 0.75);
+    }
+    .hs-line {
+      position: absolute;
+      top: 0;
+      height: 1px;
+      width: 55px;
+      background: linear-gradient(90deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.3));
+    }
+    .hs-label {
+      position: absolute;
+      top: 0;
+      transform: translateY(-50%);
+      white-space: nowrap;
+      text-shadow: 0 1px 16px rgba(0, 0, 0, 0.95);
+      font-family: 'Inter', sans-serif;
+    }
+    .hs-label b {
+      display: block;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: #fff;
+      letter-spacing: 0.02em;
+    }
+    .hs-label span {
+      display: block;
+      font-size: 0.72rem;
+      color: rgba(255, 255, 255, 0.7);
+      font-weight: 300;
+      margin-top: 2px;
+    }
+    .hotspot.side-right .hs-line {
+      left: 6px;
+    }
+    .hotspot.side-right .hs-label {
+      left: 68px;
+    }
+    .hotspot.side-left .hs-line {
+      right: 6px;
+      transform-origin: right;
+    }
+    .hotspot.side-left .hs-label {
+      right: 68px;
+      text-align: right;
+    }
+
+    /* =====================================================
+       SCROLL PROGRESS — ultra-thin top bar
+    ===================================================== */
+    #scroll-progress {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 0%;
+      height: 1px;
+      background: linear-gradient(90deg, rgba(255,255,255,0.1), rgba(255,255,255,0.4));
+      z-index: 60;
+      pointer-events: none;
+    }
+
+    /* =====================================================
+       MOBILE FALLBACK
+    ===================================================== */
+    #mobile-fallback { display: none; }
+
+    @media (max-width: 767px) {
+      #viewport { display: none; }
+      #scroll-spacer { height: auto; }
+      #mobile-fallback { display: block; }
+    }
+  </style>
+</head>
+
+<body>
+
+
+
+  <!-- ===== FULLSCREEN PROGRESS LOADER ===== -->
+  <div id="loader" style="position: fixed; inset: 0; background: #000; z-index: 2000; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: auto;">
+    <div id="loader-percent" style="font-family: 'Playfair Display', Georgia, serif; font-size: clamp(3.5rem, 9vw, 7rem); font-weight: 400; color: rgba(255,255,255,0.95); line-height: 1; letter-spacing: -0.02em;">0%</div>
+    <div style="width: min(280px, 60vw); height: 1px; background: rgba(255,255,255,0.1); margin-top: 2rem; overflow: hidden;">
+      <div id="loader-bar-fill" style="width: 0%; height: 100%; background: linear-gradient(90deg, rgba(255,255,255,0.2), #fff); transition: width 0.15s ease-out;"></div>
+    </div>
+    <p id="loader-label" style="margin-top: 1.5rem; font-family: 'Inter', sans-serif; font-size: 0.65rem; letter-spacing: 0.35em; text-transform: uppercase; color: rgba(255,255,255,0.35);">SYSTEM INITIALIZING &bull; RAF VOYAGER</p>
+  </div>
+
+  <!-- ===== FIXED VIEWPORT — 100vw × 100vh, everything visual lives here ===== -->
+  <div id="viewport">
+
+    <!-- 3D Canvas -->
+    <div id="canvas-container" aria-hidden="true"></div>
+
+    <!-- UI Overlay (above canvas) -->
+    <div id="ui-overlay">
+
+      <!-- Scroll Progress Bar -->
+      <div id="scroll-progress" aria-hidden="true"></div>
+
+      <!-- Intro Hero Text (visible initially when loader slides up; hides on scroll) -->
+      <section id="hero-text" class="beat-text" style="z-index: 30; opacity: 1; transform: translate(-50%, -50%);">
+        <p class="beat-label">Strategic Aerospace Engineering</p>
+        <h1 class="beat-headline"><em>RAF</em> Voyager</h1>
+        <div class="beat-divider"></div>
+        <p class="beat-sub">Uncompromising aerodynamic poise and transatlantic luxury. Purpose-built for the world's most demanding skies.</p>
+      </section>
+
+      <!-- Scroll to initiate flight prompt -->
+      <div id="scroll-prompt">
+        <p class="prompt-text">Scroll to Initiate Flight</p>
+        <div class="prompt-line"></div>
+      </div>
+
+      <!-- Chapter Nav Diamonds (EverSwap style) -->
+      <nav id="nav-diamonds" aria-label="Flight chapters">
+        <button class="nav-diamond active" data-chapter="0" aria-label="Overview"></button>
+        <button class="nav-diamond" data-chapter="1" aria-label="Aerodynamic profile"></button>
+        <button class="nav-diamond" data-chapter="2" aria-label="Materials and livery"></button>
+        <button class="nav-diamond" data-chapter="3" aria-label="Propulsion"></button>
+        <button class="nav-diamond" data-chapter="4" aria-label="The future of flight"></button>
+      </nav>
+
+      <!-- 3D-anchored Callouts Layer -->
+      <div id="hotspots" aria-hidden="true"></div>
+
+      <!-- ── Chapter 1: Aerodynamic Profile (Top-left, plane is on the right) ── -->
+      <section id="chapter-1" class="chapter left top-left" aria-label="Aerodynamic Profile">
+        <div class="ch-index"><b>01</b><i></i><span>Aerodynamic profile</span></div>
+        <h2 class="ch-title">Slicing through air</h2>
+        <p class="ch-copy">Sculpted nose cone shaped by computational fluid dynamics for transonic efficiency.</p>
+        <div class="ch-stats">
+          <div class="ch-stat"><b>Mach 0.86</b><span>Cruise speed</span></div>
+          <div class="ch-stat"><b>41,000 ft</b><span>Service ceiling</span></div>
+        </div>
+      </section>
+
+      <!-- ── Chapter 2: Materials & Livery (Right side, plane is on the left) ── -->
+      <section id="chapter-2" class="chapter right" aria-label="Materials & Livery">
+        <div class="ch-index"><b>02</b><i></i><span>Materials &amp; livery</span></div>
+        <h2 class="ch-title">Engineered surfaces</h2>
+        <p class="ch-copy">Advanced composite panels with aerospace-grade ceramic coating.</p>
+        <div class="ch-stats">
+          <div class="ch-stat"><b>60.3 m</b><span>Wingspan</span></div>
+          <div class="ch-stat"><b>58.8 m</b><span>Length</span></div>
+        </div>
+      </section>
+
+      <!-- ── Chapter 3: Propulsion (Left side, plane is centered cruising straight) ── -->
+      <section id="chapter-3" class="chapter left" aria-label="Propulsion">
+        <div class="ch-index"><b>03</b><i></i><span>Propulsion</span></div>
+        <h2 class="ch-title">Twin Trent 772B</h2>
+        <p class="ch-copy">High-bypass turbofan architecture producing 71,100 lbs of thrust per engine.</p>
+        <div class="ch-stats">
+          <div class="ch-stat"><b>2 × 71,100</b><span>Pounds of thrust</span></div>
+          <div class="ch-stat"><b>14,800 km</b><span>Max range</span></div>
+        </div>
+      </section>
+
+      <!-- Architectural Diamond Frame Overlay (EverSwap 45° Jewel) -->
+      <div id="diamond-frame" aria-hidden="true">
+        <div class="diamond-box-border"></div>
+        <div class="diamond-corner-crosshair"></div>
+        <!-- Single word inside the diamond jewel as it shrinks near -->
+        <div id="diamond-word">VOYAGER</div>
+      </div>
+
+      <!-- Beat Penultimate — EverSwap "One Pool Every Function" style -->
+      <section id="beat-penultimate" class="beat-text" style="z-index: 25; opacity: 0; transform: translate(-50%, -50%);">
+        <h2 class="beat-headline" style="line-height: 1.02; margin-bottom: 1.25rem;">
+          The Future<br>of <em>Flight</em>
+        </h2>
+        <p class="beat-sub" style="margin-bottom: 2.2rem; max-width: 520px;">
+          Building the pinnacle of strategic long-range aviation and aerodynamic excellence.
+        </p>
+        <div style="display: flex; justify-content: center;">
+          <a href="#specifications" class="everswap-pill-cta" role="button">
+            <span>Explore Specs</span>
+            <div class="pill-arrow-circle" aria-hidden="true">
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4.5 11.5L11.5 4.5"/><path d="M4.5 4.5h7v7"/>
+              </svg>
+            </div>
+          </a>
+        </div>
+      </section>
+
+      <!-- Beat Finale — EverSwap "Climb with EverSwap" Summit style -->
+      <section id="beat-finale" class="beat-text" style="z-index: 25; opacity: 0; top: 68%; left: 50%; transform: translate(-50%, -46%); max-width: 800px;">
+        <p class="summit-label" style="font-family: 'Inter', sans-serif; font-size: 0.85rem; font-weight: 400; letter-spacing: 0.06em; color: rgba(255,255,255,0.6); margin-bottom: 0.85rem;">
+          Stay close to the summit
+        </p>
+        <h3 class="summit-headline" style="font-family: 'Playfair Display', Georgia, serif; font-size: clamp(2.8rem, 6.5vw, 5.5rem); font-weight: 400; line-height: 1.05; color: #f8f7f2; letter-spacing: -0.01em; margin-bottom: 2.2rem;">
+          Fly with <em>Voyager</em>
+        </h3>
+        <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+          <a href="#specifications" class="everswap-pill-simple" role="button">
+            <span>Explore Specifications</span>
+          </a>
+          <a href="#charter" class="everswap-pill-simple" role="button">
+            <span>Book Charter Flight</span>
+          </a>
+        </div>
+      </section>
+
+    </div><!-- /ui-overlay -->
+  </div><!-- /viewport -->
+
+  <!-- ===== INVISIBLE SCROLL SPACER — drives GSAP progress ===== -->
+  <div id="scroll-spacer"></div>
+
+  <!-- ===== MOBILE FALLBACK ===== -->
+  <main id="mobile-fallback">
+    <section class="min-h-screen flex flex-col items-center justify-center px-6 py-20 text-center" style="background: linear-gradient(180deg, #000 0%, #060a14 50%, #000 100%);">
+      <h1 class="text-5xl font-light mb-4 leading-tight" style="font-family: 'Playfair Display', serif;"><em>RAF</em> Voyager</h1>
+      <p class="text-sm font-light text-white/40 max-w-xs leading-relaxed mb-10">Military-grade engineering meets uncompromising design. Purpose-built for the skies.</p>
+
+      <div class="w-full max-w-xs h-px bg-white/10 mb-10"></div>
+
+      <p class="text-xs tracking-[0.3em] uppercase text-white/25 mb-3">Aerodynamic Profile</p>
+      <h2 class="text-2xl font-light mb-3" style="font-family: 'Playfair Display', serif;">Slicing Through Air</h2>
+      <p class="text-sm font-light text-white/35 max-w-xs leading-relaxed mb-10">Sculpted nose cone shaped by computational fluid dynamics for transonic efficiency.</p>
+
+      <div class="w-full max-w-xs h-px bg-white/10 mb-10"></div>
+
+      <p class="text-xs tracking-[0.3em] uppercase text-white/25 mb-3">Materials &amp; Livery</p>
+      <h2 class="text-2xl font-light mb-3" style="font-family: 'Playfair Display', serif;">Engineered Surfaces</h2>
+      <p class="text-sm font-light text-white/35 max-w-xs leading-relaxed mb-10">Advanced composite panels with aerospace-grade ceramic coating.</p>
+
+      <div class="w-full max-w-xs h-px bg-white/10 mb-10"></div>
+
+      <p class="text-xs tracking-[0.3em] uppercase text-white/25 mb-3">Propulsion</p>
+      <h2 class="text-2xl font-light mb-3" style="font-family: 'Playfair Display', serif;">Twin Rolls-Royce Trent 772B</h2>
+      <p class="text-sm font-light text-white/35 max-w-xs leading-relaxed mb-10">71,100 lbs of thrust per engine. High-bypass turbofan architecture.</p>
+
+      <div class="w-full max-w-xs h-px bg-white/10 mb-10"></div>
+
+      <p class="text-xs tracking-[0.3em] uppercase text-white/25 mb-3">VIP Interior</p>
+      <h2 class="text-2xl font-light mb-3" style="font-family: 'Playfair Display', serif;">Beyond First Class</h2>
+      <p class="text-sm font-light text-white/35 max-w-xs leading-relaxed mb-10">Diplomatic suite with Alcantara surfaces and whisper-quiet pressurization.</p>
+
+      <div class="w-full max-w-xs h-px bg-white/10 my-10"></div>
+
+      <a href="#" class="cta-primary" role="button" style="margin: 0 auto;">
+        Explore Specs
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="w-4 h-4">
+          <path d="M7 17L17 7"/><path d="M7 7h10v10"/>
+        </svg>
+      </a>
+    </section>
+  </main>
+
+  <!-- ===== MAIN SCRIPT ===== -->
+  <script type="module">
+    import * as THREE from 'three';
+    import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+    import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
+    import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+    import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+    import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+    import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+
+    /* ================================================================
+       MOBILE — skip WebGL entirely on small screens
+    ================================================================ */
+    const isMobile = window.innerWidth < 768;
+
+    if (!isMobile) {
+
+      /* ================================================================
+         DOM REFERENCES
+      ================================================================ */
+      const progressBar     = document.getElementById('scroll-progress');
+      const container       = document.getElementById('canvas-container');
+      const chapter1        = document.getElementById('chapter-1');
+      const chapter2        = document.getElementById('chapter-2');
+      const chapter3        = document.getElementById('chapter-3');
+      const navDiamonds     = document.querySelectorAll('.nav-diamond');
+      const beatPenultimate = document.getElementById('beat-penultimate');
+      const beatFinale      = document.getElementById('beat-finale');
+      const diamondFrame    = document.getElementById('diamond-frame');
+      const diamondWord     = document.getElementById('diamond-word');
+      const heroText        = document.getElementById('hero-text');
+      const scrollPrompt    = document.getElementById('scroll-prompt');
+      const loaderEl        = document.getElementById('loader');
+      const loaderPercent   = document.getElementById('loader-percent');
+      const loaderBarFill   = document.getElementById('loader-bar-fill');
+
+      /* ================================================================
+         HOTSPOTS — 3D-anchored callouts pointing to aircraft parts
+      ================================================================ */
+      const HOTSPOTS = [
+        { ch: 1, p: [0, -6.4, 61.2],      side: 'right', title: 'Sculpted radome',     note: 'CFD transonic design' },
+        { ch: 1, p: [-64.4, 0, -14.7],    side: 'right', title: '60.3 m wingspan',     note: 'Supercritical wingtip' },
+        { ch: 2, p: [-30, -5.5, -8],      side: 'left',  title: 'Composite wing skin', note: 'Ceramic thermal coating' },
+        { ch: 2, p: [0, -0.4, 12],        side: 'left',  title: 'Fuselage crown',      note: 'Reinforced titanium frame' },
+        { ch: 3, p: [22.3, -14.95, 14.6], side: 'right', title: 'Trent 772B',         note: '71,100 lbf turbofan' },
+      ];
+
+      const hsContainer = document.getElementById('hotspots');
+      if (hsContainer) {
+        HOTSPOTS.forEach((h) => {
+          const el = document.createElement('div');
+          el.className = `hotspot side-${h.side}`;
+          el.innerHTML = `<span class="hs-dot"></span><span class="hs-line"></span><span class="hs-label"><b>${h.title}</b><span>${h.note}</span></span>`;
+          hsContainer.appendChild(el);
+          h.el = el;
+          h.v = new THREE.Vector3(...h.p);
+        });
+      }
+      const tmpHsVec = new THREE.Vector3();
+      let currentScrollProgress = 0;
+
+      /* ================================================================
+         PROGRESS LOADER CONTROLLER
+         Smooth progress counter that translates the black loader screen
+         from bottom to top (yPercent: -100) once loading completes.
+      ================================================================ */
+      let currentPercent = 0;
+      let targetPercent = 0;
+
+      function updateLoaderUI(p) {
+        currentPercent = Math.max(currentPercent, p);
+        if (loaderPercent) loaderPercent.textContent = Math.round(currentPercent) + '%';
+        if (loaderBarFill) loaderBarFill.style.width = currentPercent + '%';
+      }
+
+      const progressInterval = setInterval(() => {
+        if (currentPercent < targetPercent) {
+          currentPercent += Math.min(3, targetPercent - currentPercent);
+          updateLoaderUI(currentPercent);
+        }
+      }, 30);
+
+      function dismissLoader() {
+        targetPercent = 100;
+        const finishInterval = setInterval(() => {
+          if (currentPercent < 100) {
+            currentPercent += 4;
+            updateLoaderUI(Math.min(100, currentPercent));
+          } else {
+            clearInterval(finishInterval);
+            clearInterval(progressInterval);
+            updateLoaderUI(100);
+
+            // GSAP slides the loader up from bottom to top
+            gsap.to(loaderEl, {
+              yPercent: -100,
+              duration: 1.25,
+              ease: 'power3.inOut',
+              delay: 0.25,
+              onComplete: () => {
+                if (loaderEl) loaderEl.style.display = 'none';
+              }
+            });
+          }
+        }, 20);
+      }
+
+      const loadingManager = new THREE.LoadingManager();
+      loadingManager.onProgress = (url, itemsLoaded, itemsTotal) => {
+        targetPercent = Math.min(95, Math.round((itemsLoaded / itemsTotal) * 95));
+      };
+      loadingManager.onLoad = () => {
+        dismissLoader();
+      };
+
+      /* ================================================================
+         RENDERER
+      ================================================================ */
+      const renderer = new THREE.WebGLRenderer({
+        antialias: true,
+        alpha: false,
+        powerPreference: 'high-performance',
+      });
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setClearColor(0x000000, 1);
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.05;
+      renderer.outputColorSpace = THREE.SRGBColorSpace;
+      container.appendChild(renderer.domElement);
+
+      /* ================================================================
+         SCENE & CAMERA
+      ================================================================ */     
+      const scene = new THREE.Scene();
+
+      const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 3500);
+      camera.position.set(0, 2.0, 12.8);
+      camera.lookAt(0, 0.35, 0);
+
+      /* ================================================================
+         LIGHTING
+      ================================================================ */
+      // Key/Rim — crisp daylight blue, high-left
+      const keyLight = new THREE.DirectionalLight(0x7ab6ef, 3.8);
+      keyLight.position.set(-8, 14, -6);
+      scene.add(keyLight);
+
+      // Fill — soft warm ambient sun bounce
+      const fillLight = new THREE.DirectionalLight(0xfff3e0, 1.2);
+      fillLight.position.set(5, -2, 8);
+      scene.add(fillLight);
+
+      // Ambient hemisphere — sky to ground
+      const hemiLight = new THREE.HemisphereLight(0x2a3f66, 0x0c1018, 0.75);
+      scene.add(hemiLight);
+
+      /* ================================================================
+         ENVIRONMENT MAP & 3D DYNAMIC SKY PANORAMA
+         ─────────────────────────────────────────────────────────────
+         Loads 360° panorama JPEG into:
+           • scene.environment → realistic reflections on the aircraft
+           • skyMesh (3D inverted Sphere) → visible panoramic sky dome that
+             physically translates and moves forward along with scroll,
+             creating genuine 3D forward flight velocity and parallax.
+      ================================================================ */
+      const pmremGenerator = new THREE.PMREMGenerator(renderer);
+      pmremGenerator.compileEquirectangularShader();
+
+      let skyMesh = null;
+      const currentSky = { z: 0, rotY: 0 };
+
+      const textureLoader = new THREE.TextureLoader(loadingManager);
+      textureLoader.load('public/panorama-360-sky-view-img.jpg', (panoramaTexture) => {
+        panoramaTexture.colorSpace = THREE.SRGBColorSpace;
+
+        const envMap = pmremGenerator.fromEquirectangular(panoramaTexture).texture;
+        scene.environment = envMap;
+        scene.environmentIntensity = 1.35;
+        pmremGenerator.dispose();
+
+        // 3D Sky Dome Mesh that responds to camera & scroll forward motion
+        const skyGeo = new THREE.SphereGeometry(1400, 60, 40);
+        skyGeo.scale(-1, 1, 1);
+
+        const skyMat = new THREE.MeshBasicMaterial({
+          map: panoramaTexture,
+          depthWrite: false,
+          toneMapped: false,
+        });
+
+        skyMesh = new THREE.Mesh(skyGeo, skyMat);
+        skyMesh.renderOrder = -100;
+        scene.add(skyMesh);
+      });
+
+      /* ================================================================
+         POST-PROCESSING — UnrealBloomPass
+      ================================================================ */
+      const composer = new EffectComposer(renderer);
+      composer.addPass(new RenderPass(scene, camera));
+
+      const bloomPass = new UnrealBloomPass(
+        new THREE.Vector2(window.innerWidth, window.innerHeight),
+        0.55,  // strength
+        0.35,  // radius
+        0.88   // threshold
+      );
+      composer.addPass(bloomPass);
+      composer.addPass(new OutputPass());
+
+      /* ================================================================
+         LOAD GLB MODEL
+      ================================================================ */
+      const dracoLoader = new DRACOLoader();
+      dracoLoader.setDecoderPath('https://cdn.jsdelivr.net/npm/three@0.164.1/examples/jsm/libs/draco/');
+
+      const gltfLoader = new GLTFLoader(loadingManager);
+      gltfLoader.setDRACOLoader(dracoLoader);
+
+      let model = null;
+      const modelGroup = new THREE.Group();
+      scene.add(modelGroup);
+
+      gltfLoader.load('public/raf_voyager_original_backup.glb', (gltf) => {
+        model = gltf.scene;
+
+        // ── Auto-center and increase scale for prominent, heroic aircraft view ──
+        const box = new THREE.Box3().setFromObject(model);
+        const center = box.getCenter(new THREE.Vector3());
+        const size = box.getSize(new THREE.Vector3());
+        const maxDim = Math.max(size.x, size.y, size.z);
+        // Significantly increased targetSize so the aircraft fills the viewport heroically
+        const targetSize = 16.5;
+        const scale = targetSize / maxDim;
+
+        model.position.sub(center);
+        model.scale.setScalar(scale);
+
+        // Recompute center after scale
+        const box2 = new THREE.Box3().setFromObject(model);
+        const center2 = box2.getCenter(new THREE.Vector3());
+        model.position.sub(center2);
+
+        // Enhance material metallicity & aerospace specular response
+        model.traverse((child) => {
+          if (child.isMesh) {
+            child.castShadow = false;
+            child.receiveShadow = false;
+            if (child.material) {
+              if (child.material.metalness !== undefined) {
+                child.material.metalness = Math.max(child.material.metalness, 0.45);
+                child.material.roughness = Math.min(child.material.roughness, 0.55);
+              }
+              child.material.envMapIntensity = 1.6;
+              child.material.needsUpdate = true;
+            }
+          }
+        });
+
+        modelGroup.add(model);
+      },
+      undefined,
+      (error) => {
+        console.error('Error loading model:', error);
+      });
+
+      /* ================================================================
+         LENIS SMOOTH SCROLL + GSAP INTEGRATION
+      ================================================================ */
+      const lenis = new Lenis({
+        duration: 1.4,
+        easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+        orientation: 'vertical',
+        gestureOrientation: 'vertical',
+        smoothWheel: true,
+      });
+
+      lenis.on('scroll', ScrollTrigger.update);
+      gsap.ticker.add((time) => { lenis.raf(time * 1000); });
+      gsap.ticker.lagSmoothing(0);
+
+      /* ================================================================
+         CAMERA & MODEL KEYFRAMES — Forward Driving Flight with Left/Right Views
+      ================================================================ */
+      const KEYFRAMES = [
+        // ── BEAT 0: Initial Hero Camera (0.00 → 0.16) — Straight behind destination ──
+        { pos: [0, 1.9, 12.8],       target: [0, 0.35, 0],          fov: 45 },
+        // ── BEAT 1: Driving Forward + Left View Reveal (0.38) ──
+        { pos: [6.5, 2.5, -42],      target: [-1.0, 0.35, -55],     fov: 45 },
+        // ── BEAT 2: Driving Forward + Right View Reveal (0.62) ──
+        { pos: [-6.5, 2.3, -107],    target: [1.0, 0.2, -120],      fov: 45 },
+        // ── BEAT 3: Level Off, Align Center (0.80) — Straight Forward ──
+        { pos: [0, 1.9, -172.2],     target: [0, 0.35, -185],       fov: 45 },
+        // ── BEAT 4: Forward Departure into Horizon (0.98) — Straight Away & Reduce Size ──
+        { pos: [0, 1.8, -190],       target: [0, 0.3, -480],        fov: 46 },
+      ];
+
+      const MODEL_POSITIONS = [
+        { pos: [0, -28, 14] },          // Initially hidden below camera view
+        { pos: [-1.2, 0.4, -55] },      // Drives forward to Z: -55, reveals left view
+        { pos: [1.2, -0.2, -120] },     // Drives forward to Z: -120, reveals right view
+        { pos: [0, 0, -185] },          // Drives forward straight to Z: -185, centered & level
+        { pos: [0, 0, -480] },          // Moves straight into distance & reduces size
+      ];
+
+      const MODEL_ROTATIONS = [
+        { rotation: [0.12, Math.PI, 0] },             // Pitch attitude entering from below
+        { rotation: [0.06, Math.PI + 0.10, 0.20] },   // Left view angle, gentle bank
+        { rotation: [-0.04, Math.PI - 0.10, -0.20] }, // Right view angle, gentle bank
+        { rotation: [0, Math.PI, 0] },                // Level wings, straight forward flight
+        { rotation: [0, Math.PI, 0] },                // Completely straight departure (0 pitch, 0 roll)
+      ];
+
+      /* ================================================================
+         INTERPOLATION STATE
+      ================================================================ */
+      const currentCamPos  = { x: KEYFRAMES[0].pos[0],    y: KEYFRAMES[0].pos[1],    z: KEYFRAMES[0].pos[2]    };
+      const currentTarget  = { x: KEYFRAMES[0].target[0], y: KEYFRAMES[0].target[1], z: KEYFRAMES[0].target[2] };
+      const currentFov     = { value: KEYFRAMES[0].fov };
+      const currentRot     = { x: MODEL_ROTATIONS[0].rotation[0], y: MODEL_ROTATIONS[0].rotation[1], z: MODEL_ROTATIONS[0].rotation[2] };
+      const currentModPos  = { x: MODEL_POSITIONS[0].pos[0], y: MODEL_POSITIONS[0].pos[1], z: MODEL_POSITIONS[0].pos[2] };
+      const currentScale   = { value: 0.001 }; // Aeroplane is completely hidden initially!
+      const lookAtVec      = new THREE.Vector3();
+
+      /* ================================================================
+         INIT SCROLL SYSTEM — single continuous GSAP timeline
+      ================================================================ */
+      function initScrollSystem() {
+        gsap.registerPlugin(ScrollTrigger);
+
+        // Initialize model group transforms
+        modelGroup.rotation.set(currentRot.x, currentRot.y, currentRot.z);
+        modelGroup.position.set(currentModPos.x, currentModPos.y, currentModPos.z);
+        modelGroup.scale.setScalar(currentScale.value);
+
+        // ── EverSwap Diamond Geometry State ──
+        const diamondState = {
+          size: 2500,     // half-diagonal distance in px
+          cy: 50,         // vertical center in percent
+          frameOpacity: 0 // outline border opacity
+        };
+
+        function applyDiamondClip() {
+          const S = diamondState.size;
+          const cy = diamondState.cy;
+
+          if (S >= 2000) {
+            container.style.clipPath = 'none';
+            container.style.webkitClipPath = 'none';
+          } else {
+            const cp = `polygon(50% calc(${cy}% - ${S}px), calc(50% + ${S}px) ${cy}%, 50% calc(${cy}% + ${S}px), calc(50% - ${S}px) ${cy}%)`;
+            container.style.clipPath = cp;
+            container.style.webkitClipPath = cp;
+          }
+
+          if (diamondFrame) {
+            diamondFrame.style.opacity = diamondState.frameOpacity;
+            diamondFrame.style.top = `${cy}%`;
+            const edge = Math.round(S * 1.4142);
+            diamondFrame.style.width = `${edge}px`;
+            diamondFrame.style.height = `${edge}px`;
+          }
+        }
+        applyDiamondClip();
+
+        const tl = gsap.timeline({
+          scrollTrigger: {
+            trigger: '#scroll-spacer',
+            start: 'top top',
+            end: 'bottom bottom',
+            scrub: 1.2,
+            onUpdate: (self) => {
+              const p = self.progress;
+              currentScrollProgress = p;
+
+              // ── Update scroll progress bar ──
+              progressBar.style.width = (p * 100) + '%';
+
+              // ── Apply camera transforms ──
+              camera.position.set(currentCamPos.x, currentCamPos.y, currentCamPos.z);
+              lookAtVec.set(currentTarget.x, currentTarget.y, currentTarget.z);
+              camera.lookAt(lookAtVec);
+              camera.fov = currentFov.value;
+              camera.updateProjectionMatrix();
+
+              // ── Apply model transforms ──
+              modelGroup.rotation.set(currentRot.x, currentRot.y, currentRot.z);
+              modelGroup.position.set(currentModPos.x, currentModPos.y, currentModPos.z);
+              modelGroup.scale.setScalar(currentScale.value);
+
+              // ── Apply sky motion along with scroll ──
+              if (skyMesh) {
+                skyMesh.position.z = currentSky.z;
+                skyMesh.position.x = currentCamPos.x * 0.12;
+                skyMesh.position.y = currentCamPos.y * 0.12;
+                skyMesh.rotation.y = currentSky.rotY;
+                skyMesh.rotation.z = currentRot.z * 0.18; // Atmospheric horizon bank
+              }
+
+              // ── Apply EverSwap diamond clip on canvas ──
+              applyDiamondClip();
+
+              // ── Update active chapter nav diamond ──
+              if (navDiamonds && navDiamonds.length) {
+                let activeIdx = 0;
+                if (p >= 0.84) activeIdx = 4;
+                else if (p >= 0.62) activeIdx = 3;
+                else if (p >= 0.38) activeIdx = 2;
+                else if (p >= 0.16) activeIdx = 1;
+
+                navDiamonds.forEach((dot, idx) => {
+                  dot.classList.toggle('active', idx === activeIdx);
+                });
+              }
+            },
+          },
+        });
+
+        // Make chapter nav diamonds clickable for smooth navigation
+        navDiamonds.forEach((dot, idx) => {
+          dot.addEventListener('click', () => {
+            const targets = [0, 0.26, 0.50, 0.68, 0.98];
+            const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+            window.scrollTo({ top: targets[idx] * maxScroll, behavior: 'smooth' });
+          });
+        });
+
+        const d = 1; // total normalized duration
+
+        // Continuous forward sky flight motion synchronized with scroll
+        tl.to(currentSky, {
+          z: 550,
+          rotY: 0.25,
+          duration: d,
+          ease: 'power1.inOut'
+        }, 0);
+
+        // ── Phase 0: Intro Scroll (0.00 → 0.16) ──
+        // Hides hero text and brings the aeroplane smoothly up to set into the exact hero position
+        tl.addLabel('intro', 0);
+        tl.to(heroText,     { opacity: 0, y: -45, duration: d * 0.12, ease: 'power2.in' }, 'intro');
+        tl.to(scrollPrompt, { opacity: 0, duration: d * 0.08, ease: 'power2.in' }, 'intro');
+        tl.to(currentModPos, { x: 0, y: 0, z: 0, duration: d * 0.16, ease: 'power2.out' }, 'intro');
+        tl.to(currentRot,    { x: 0, y: Math.PI, z: 0, duration: d * 0.16, ease: 'power2.out' }, 'intro');
+        tl.to(currentScale,  { value: 1.0, duration: d * 0.16, ease: 'power2.out' }, 'intro');
+
+        // Sequence 1: Drive Forward & Reveal Left View (0.16 → 0.38)
+        // Plane is on the right — Chapter 1 details appear on the LEFT side (never overlapping model)
+        tl.addLabel('seq1', d * 0.16);
+        tl.to(currentCamPos, { x: KEYFRAMES[1].pos[0], y: KEYFRAMES[1].pos[1], z: KEYFRAMES[1].pos[2], duration: d * 0.22, ease: 'power2.inOut' }, 'seq1');
+        tl.to(currentTarget, { x: KEYFRAMES[1].target[0], y: KEYFRAMES[1].target[1], z: KEYFRAMES[1].target[2], duration: d * 0.22, ease: 'power2.inOut' }, 'seq1');
+        tl.to(currentModPos, { x: MODEL_POSITIONS[1].pos[0], y: MODEL_POSITIONS[1].pos[1], z: MODEL_POSITIONS[1].pos[2], duration: d * 0.22, ease: 'power2.inOut' }, 'seq1');
+        tl.to(currentRot,    { x: MODEL_ROTATIONS[1].rotation[0], y: MODEL_ROTATIONS[1].rotation[1], z: MODEL_ROTATIONS[1].rotation[2], duration: d * 0.22, ease: 'power2.inOut' }, 'seq1');
+        tl.fromTo(chapter1,  { opacity: 0, x: -30 }, { opacity: 1, x: 0, duration: d * 0.05, ease: 'power2.out' }, 'seq1+=0.04');
+        tl.to(chapter1,      { opacity: 0, x: -20, duration: d * 0.04, ease: 'power2.in' }, 'seq1+=0.17');
+
+        // Sequence 2: Drive Forward & Reveal Right View (0.38 → 0.62)
+        // Plane is on the left — Chapter 2 details appear on the RIGHT side (never overlapping model)
+        tl.addLabel('seq2', d * 0.38);
+        tl.to(currentCamPos, { x: KEYFRAMES[2].pos[0], y: KEYFRAMES[2].pos[1], z: KEYFRAMES[2].pos[2], duration: d * 0.24, ease: 'power2.inOut' }, 'seq2');
+        tl.to(currentTarget, { x: KEYFRAMES[2].target[0], y: KEYFRAMES[2].target[1], z: KEYFRAMES[2].target[2], duration: d * 0.24, ease: 'power2.inOut' }, 'seq2');
+        tl.to(currentModPos, { x: MODEL_POSITIONS[2].pos[0], y: MODEL_POSITIONS[2].pos[1], z: MODEL_POSITIONS[2].pos[2], duration: d * 0.24, ease: 'power2.inOut' }, 'seq2');
+        tl.to(currentRot,    { x: MODEL_ROTATIONS[2].rotation[0], y: MODEL_ROTATIONS[2].rotation[1], z: MODEL_ROTATIONS[2].rotation[2], duration: d * 0.24, ease: 'power2.inOut' }, 'seq2');
+        tl.fromTo(chapter2,  { opacity: 0, x: 30 }, { opacity: 1, x: 0, duration: d * 0.05, ease: 'power2.out' }, 'seq2+=0.04');
+        tl.to(chapter2,      { opacity: 0, x: 20, duration: d * 0.04, ease: 'power2.in' }, 'seq2+=0.19');
+
+        // Sequence 3: Align Dead Straight & High-Speed Drive (0.62 → 0.74)
+        // Plane is centered — Chapter 3 details appear on the LEFT side (never overlapping model)
+        tl.addLabel('seq3', d * 0.62);
+        tl.to(currentCamPos, { x: KEYFRAMES[3].pos[0], y: KEYFRAMES[3].pos[1], z: KEYFRAMES[3].pos[2], duration: d * 0.12, ease: 'power2.inOut' }, 'seq3');
+        tl.to(currentTarget, { x: KEYFRAMES[3].target[0], y: KEYFRAMES[3].target[1], z: KEYFRAMES[3].target[2], duration: d * 0.12, ease: 'power2.inOut' }, 'seq3');
+        tl.to(currentModPos, { x: MODEL_POSITIONS[3].pos[0], y: MODEL_POSITIONS[3].pos[1], z: MODEL_POSITIONS[3].pos[2], duration: d * 0.12, ease: 'power2.inOut' }, 'seq3');
+        tl.to(currentRot,    { x: MODEL_ROTATIONS[3].rotation[0], y: MODEL_ROTATIONS[3].rotation[1], z: MODEL_ROTATIONS[3].rotation[2], duration: d * 0.12, ease: 'power2.inOut' }, 'seq3');
+        tl.fromTo(chapter3,  { opacity: 0, x: -30 }, { opacity: 1, x: 0, duration: d * 0.03, ease: 'power2.out' }, 'seq3+=0.02');
+        tl.to(chapter3,      { opacity: 0, x: -20, duration: d * 0.03, ease: 'power2.in' }, 'seq3+=0.08');
+
+        // Sequence 4: Fly Away into Horizon & Completely Hide Aeroplane (0.74 → 0.84)
+        // Aeroplane speeds away into the far distance and reduces scale to 0 (completely disappears)
+        tl.addLabel('flyaway', d * 0.74);
+        tl.to(currentCamPos, { x: 0, y: 1.8, z: -190, duration: d * 0.10, ease: 'power2.in' }, 'flyaway');
+        tl.to(currentTarget, { x: 0, y: 0.3, z: -700, duration: d * 0.10, ease: 'power2.in' }, 'flyaway');
+        tl.to(currentModPos, { x: 0, y: 0, z: -650, duration: d * 0.10, ease: 'power2.in' }, 'flyaway');
+        tl.to(currentRot,    { x: 0, y: Math.PI, z: 0, duration: d * 0.10, ease: 'power2.inOut' }, 'flyaway');
+        tl.to(currentScale,  { value: 0.0, duration: d * 0.10, ease: 'power2.in' }, 'flyaway');
+        tl.to(currentFov,    { value: KEYFRAMES[4].fov, duration: d * 0.10, ease: 'power2.in' }, 'flyaway');
+
+        // ── Phase 5: EverSwap Diamond Architecture Finale (0.84 → 1.00) ──
+        // 1. Aeroplane is now hidden — ONLY NOW the text contents reveal over the pure sky (0.84 → 0.88)
+        tl.addLabel('penultimate', d * 0.84);
+        tl.to(beatPenultimate, {
+          opacity: 1,
+          transform: 'translate(-50%, -50%)',
+          duration: d * 0.04,
+          ease: 'power2.out'
+        }, 'penultimate');
+
+        // 2. Diamond shade appears at both edges & closes in (0.88 → 0.96)
+        // Text continues to show until diamond edges reach near the text (0.91 → 0.94)
+        tl.addLabel('diamondClose', d * 0.88);
+        tl.to(diamondState, {
+          size: 110,
+          cy: 30,
+          duration: d * 0.08,
+          ease: 'power2.inOut',
+          onUpdate: applyDiamondClip
+        }, 'diamondClose');
+
+        // Only show the architectural diamond border as it settles into the compact jewel
+        tl.to(diamondState, {
+          frameOpacity: 1,
+          duration: d * 0.04,
+          ease: 'power1.out',
+          onUpdate: applyDiamondClip
+        }, 'diamondClose+=0.04');
+
+        // Only hide the text when the diamond reaches near the text (0.91 → 0.94)
+        tl.to(beatPenultimate, {
+          opacity: 0,
+          scale: 0.94,
+          duration: d * 0.03,
+          ease: 'power1.in'
+        }, 'diamondClose+=0.03');
+
+        // When it reaches near, only show one good word "VOYAGER" inside the diamond jewel (0.91 → 0.94)
+        tl.to(diamondWord, {
+          opacity: 1,
+          duration: d * 0.03,
+          ease: 'power1.out'
+        }, 'diamondClose+=0.03');
+
+        // 3. EverSwap Summit Finale reveals below the diamond jewel (0.95 → 1.00)
+        tl.addLabel('summit', d * 0.95);
+        tl.to(beatFinale, {
+          opacity: 1,
+          transform: 'translate(-50%, -50%)',
+          duration: d * 0.05,
+          ease: 'power2.out'
+        }, 'summit');
+      }
+
+      initScrollSystem();
+
+      /* ================================================================
+         RESIZE — ResizeObserver
+      ================================================================ */
+      const resizeObserver = new ResizeObserver(() => {
+        const w = window.innerWidth;
+        const h = window.innerHeight;
+        camera.aspect = w / h;
+        camera.updateProjectionMatrix();
+        renderer.setSize(w, h);
+        composer.setSize(w, h);
+        bloomPass.resolution.set(w, h);
+      });
+      resizeObserver.observe(container);
+
+      /* ================================================================
+         RENDER LOOP — Continuous active flight physics + speed streaks
+      ================================================================ */
+      let isVisible = true;
+      document.addEventListener('visibilitychange', () => { isVisible = !document.hidden; });
+
+      const idleClock = new THREE.Clock();
+
+      function animate() {
+        requestAnimationFrame(animate);
+        if (!isVisible) return;
+
+        const elapsed = idleClock.getElapsedTime();
+
+        // ── Continuous in-flight aerodynamic breathing & wing turbulence ──
+        if (model && currentScale.value > 0.05) {
+          const t = elapsed;
+          model.position.y = Math.sin(t * 1.7) * 0.06 + Math.sin(t * 3.5) * 0.015;
+          model.position.x = Math.sin(t * 0.85) * 0.03;
+          model.rotation.z = Math.sin(t * 1.15) * 0.008; // very subtle wing rock
+          model.rotation.x = Math.cos(t * 1.35) * 0.005; // subtle pitch trim
+        }
+
+        // Continuous in-flight idle sky drift & gentle horizon breathing
+        if (skyMesh) {
+          skyMesh.rotation.y = currentSky.rotY + elapsed * 0.006;
+          skyMesh.position.z = currentSky.z + Math.sin(elapsed * 0.6) * 3.5;
+          skyMesh.rotation.z = currentRot.z * 0.18 + Math.sin(elapsed * 0.9) * 0.003;
+        }
+
+        scene.environmentRotation.y = elapsed * 0.006;
+
+        // ── 3D-anchored Hotspots projection pointing to aircraft parts ──
+        if (model && currentScale.value > 0.05) {
+          model.updateMatrixWorld(true);
+          const w = window.innerWidth;
+          const h = window.innerHeight;
+          let activeCh = 0;
+          if (currentScrollProgress >= 0.16 && currentScrollProgress < 0.38) activeCh = 1;
+          else if (currentScrollProgress >= 0.38 && currentScrollProgress < 0.62) activeCh = 2;
+          else if (currentScrollProgress >= 0.62 && currentScrollProgress < 0.74) activeCh = 3;
+
+          for (const spot of HOTSPOTS) {
+            if (spot.ch !== activeCh) {
+              spot.el.classList.remove('on');
+              continue;
+            }
+            tmpHsVec.copy(spot.v);
+            model.localToWorld(tmpHsVec);
+            tmpHsVec.project(camera);
+
+            const inView = tmpHsVec.z < 1 && Math.abs(tmpHsVec.x) < 0.94 && Math.abs(tmpHsVec.y) < 0.90;
+            if (inView) {
+              spot.el.style.transform = `translate3d(${(tmpHsVec.x * 0.5 + 0.5) * w}px, ${(-tmpHsVec.y * 0.5 + 0.5) * h}px, 0)`;
+              spot.el.classList.add('on');
+            } else {
+              spot.el.classList.remove('on');
+            }
+          }
+        } else {
+          for (const spot of HOTSPOTS) {
+            spot.el.classList.remove('on');
+          }
+        }
+
+        composer.render();
+      }
+      animate();
+
+    } // end if (!isMobile)
+  </script>
+</body>
+</html>
